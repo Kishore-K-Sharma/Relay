@@ -1,0 +1,105 @@
+# A pattern containing a slash is anchored to the directory holding this file.
+# `ios/Pods/` therefore matched <root>/ios/Pods, which does not exist — the real
+# path is app/ios/Pods. Patterns below are written without a leading path so
+# they match at any depth.
+#
+# This is a public repository. Everything here is either build output, machine
+# state, or something that must never leave a developer's laptop. When adding a
+# rule, say which of the three it is.
+
+# ---------------------------------------------------------------------------
+# Secrets and signing material. Never commit these.
+#
+# Losing a signing key means losing the ability to update the app; publishing
+# one means anyone can ship an update that users' phones will accept as ours.
+# See docs/RELEASE.md.
+# ---------------------------------------------------------------------------
+*.jks
+*.keystore
+key.properties
+*.p12
+*.pem
+*.cer
+*.p8
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+!.env.example
+secrets.properties
+google-services.json
+GoogleService-Info.plist
+
+# ---------------------------------------------------------------------------
+# Build output and machine state
+# ---------------------------------------------------------------------------
+
+# Dart / Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+coverage/
+doc/api/
+.fvm/
+# A contributor pointing a dependency at a local checkout writes this file. It
+# is correct for their machine and wrong for everybody else's.
+pubspec_overrides.yaml
+
+# The lockfile is committed. This is an application, not a library: a build that
+# cannot be reproduced from the tree is not a build anyone can audit, and the
+# cryptography here is the reason that matters.
+!pubspec.lock
+
+# Android
+.gradle/
+.kotlin/
+.cxx/
+local.properties
+captures/
+
+# iOS / macOS
+Pods/
+.symlinks/
+ephemeral/
+Flutter.framework/
+Flutter.podspec
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+DerivedData/
+
+# ---------------------------------------------------------------------------
+# Editors, OS, and scratch
+# ---------------------------------------------------------------------------
+
+# Backup and merge leftovers. `project.pbxproj.bak` was sitting in the tree and
+# would have been committed on the first push — a second, older copy of the
+# Xcode project, which is exactly the file someone opens by mistake.
+*.bak
+*.orig
+*.rej
+*~
+*.swp
+*.swo
+
+# IDE
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Per-developer tool scratch does not belong here. This file is shared, so a
+# rule in it announces which tools everyone is expected to run. Put personal
+# ignores in .git/info/exclude, which is local to your clone.

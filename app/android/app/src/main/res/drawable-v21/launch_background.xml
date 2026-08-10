@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The window the OS draws before Flutter has rendered anything.
+
+     Colours come from values/ and values-night/, so this one file serves both.
+     drawable-v21/ holds an identical copy because that qualifier wins on every
+     API this app supports; they must be changed together. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+    <item
+        android:drawable="@drawable/launch_mark"
+        android:gravity="center"
+        android:width="96dp"
+        android:height="96dp" />
+</layer-list>

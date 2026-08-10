@@ -1,0 +1,22 @@
+name: messaging
+description: Orchestrates a send or receive end to end across protocol, crypto, storage and transport.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+resolution: workspace
+
+dependencies:
+  core_protocol: ^0.1.0
+  core_crypto: ^0.1.0
+  core_identity: ^0.1.0
+  data: ^0.1.0
+  transport_api: ^0.1.0
+  transport_nostr: ^0.1.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

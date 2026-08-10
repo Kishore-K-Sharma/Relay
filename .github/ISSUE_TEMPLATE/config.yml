@@ -1,0 +1,15 @@
+# Blank issues are disabled so that every report arrives with the device and
+# distance details that make a mesh bug reproducible at all.
+blank_issues_enabled: false
+
+# GitHub requires absolute URLs here. These render above the template chooser,
+# which is the last screen someone sees before filing a vulnerability in public
+# by mistake.
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Kishore-K-Sharma/relay/security/advisories/new
+    about: Report privately. Do not open a public issue for anything affecting the cryptography, the mesh protocol, storage, or the panic wipe.
+
+  - name: Threat model and known gaps
+    url: https://github.com/Kishore-K-Sharma/relay/blob/main/docs/SECURITY.md
+    about: Read before reporting. Several things that look like flaws are stated limitations, and several things that look fine are listed there as open doubts.

@@ -1,0 +1,16 @@
+name: transport_api
+description: Abstract transport interface. Every transport (BLE, relay, fake) implements it and none of them understand frame contents.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+resolution: workspace
+
+dependencies:
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

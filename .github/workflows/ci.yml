@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  dart:
+    name: Dart packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.11.0
+
+      - name: Resolve dependencies
+        run: dart pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: dart analyze --fatal-infos
+
+      - name: Test Dart packages
+        run: |
+          for p in core_protocol core_crypto core_identity data messaging \
+                   transport_api transport_fake transport_nostr; do
+            echo "::group::$p"
+            dart test "packages/$p"
+            echo "::endgroup::"
+          done
+
+      - name: Verify test vectors are up to date
+        # The vectors are the contract shared with the Kotlin and Swift relay
+        # implementations. Regenerating them must be a deliberate, reviewed
+        # change, never an accidental by-product of an implementation edit.
+        run: |
+          dart run tools/generate_vectors.dart
+          # Scoped to the generated directories. testvectors/nostr/ holds the
+          # official NIP-44 vectors, which are vendored from the spec and are
+          # not ours to regenerate.
+          if ! git diff --quiet -- testvectors/relay testvectors/crypto; then
+            echo "::error::testvectors/ is stale. Run 'dart run tools/generate_vectors.dart'"
+            echo "and update RelayEngine.kt and RelayEngine.swift to match."
+            git diff -- testvectors/relay testvectors/crypto
+            exit 1
+          fi
+
+  flutter:
+    name: Flutter app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.1
+      - run: flutter pub get
+      - run: flutter analyze app packages
+      - run: flutter test app
+      # A Flutter package, so it needs the Flutter test runner rather than the
+      # plain Dart one used by the job above.
+      - run: flutter test packages/transport_ble
+      - run: flutter test packages/transport_wifi
+      - run: flutter build apk --debug
+
+      - name: Verify the Pigeon bindings match the contracts
+        # Generated code checked into the tree drifts silently the moment
+        # someone edits a contract and forgets to regenerate. Then Dart and
+        # native disagree about the channel and every call fails at runtime.
+        run: |
+          (cd packages/transport_ble && dart run pigeon --input pigeons/ble_api.dart)
+          (cd packages/transport_wifi && dart run pigeon --input pigeons/discovery_api.dart)
+          # Pigeon's Dart output is not formatter-clean, and the copies in the
+          # tree are — the format check in the other job sees to that. Without
+          # this line the diff below is guaranteed to fire on every run and
+          # would report the bindings stale when they are identical.
+          dart format packages/transport_ble/lib/src/generated \
+                      packages/transport_wifi/lib/src/generated
+          if ! git diff --quiet -- packages/transport_ble/lib/src/generated \
+              packages/transport_wifi/lib/src/generated \
+              app/android/app/src/main/kotlin/dev/kishorek/relay/ble/BleApi.g.kt \
+              app/android/app/src/main/kotlin/dev/kishorek/relay/wifi/DiscoveryApi.g.kt \
+              app/ios/Runner/Ble/BleApi.g.swift \
+              app/ios/Runner/Wifi/DiscoveryApi.g.swift; then
+            echo "::error::Pigeon output is stale. Regenerate it."
+            git diff --stat
+            exit 1
+          fi
+
+  kotlin-parity:
+    name: Kotlin relay parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Kotlin
+        run: |
+          curl -sSLo kotlin.zip https://github.com/JetBrains/kotlin/releases/download/v2.1.0/kotlin-compiler-2.1.0.zip
+          unzip -q kotlin.zip -d "$HOME"
+          echo "$HOME/kotlinc/bin" >> "$GITHUB_PATH"
+      - name: Compile and run relay vectors
+        run: |
+          kotlinc app/android/app/src/main/kotlin/dev/kishorek/relay/ble/RelayEngine.kt \
+                  tools/parity/kotlin/relay/Main.kt \
+                  -include-runtime -d relay_kt.jar
+          java -jar relay_kt.jar testvectors/relay/decisions.json
+
+      - name: Compile and run power vectors
+        # The battery figure is printed on screen next to the user's choice.
+        # If Dart and native drift apart, the app misquotes its own cost.
+        run: |
+          kotlinc app/android/app/src/main/kotlin/dev/kishorek/relay/ble/PowerModes.kt \
+                  tools/parity/kotlin/power/Main.kt \
+                  -include-runtime -d power_kt.jar
+          java -jar power_kt.jar testvectors/power/modes.json
+
+  swift-parity:
+    name: Swift relay parity
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run relay vectors
+        # swiftc requires the file holding top-level code to be called
+        # main.swift, which is why the harness is named that rather than
+        # RelayVectorTests.swift. It used to live in app/ios/Runner/Ble and be
+        # copied into place here; a test harness inside the app's source tree
+        # is one careless "add files to target" away from breaking the build.
+        run: |
+          mkdir -p build
+          swiftc -O app/ios/Runner/Ble/RelayEngine.swift \
+                 tools/parity/swift/relay/main.swift -o build/relay_parity
+          ./build/relay_parity testvectors/relay/decisions.json
+
+      - name: Compile and run power vectors
+        run: |
+          swiftc -O app/ios/Runner/Ble/PowerPolicy.swift \
+                 tools/parity/swift/power/main.swift -o build/power_parity
+          ./build/power_parity testvectors/power/modes.json
+
+  ios-build:
+    name: iOS build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.1
+      - run: flutter pub get
+      # The only thing that compiles MeshBlePlugin.swift and proves the mesh
+      # sources are actually in the Xcode target. They were silently excluded
+      # once already, and nothing else catches that.
+      # The only thing that compiles the Wi-Fi discovery sources and proves
+      # they are in the Xcode target. Two Pigeon-generated Swift files in one
+      # module also collide unless the second declares its own error class,
+      # which nothing but a real build catches.
+      - run: flutter build ios --no-codesign --debug
+        working-directory: app

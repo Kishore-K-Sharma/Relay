@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Relay">
+  <title>Relay</title>
+  <desc>A message leaves one phone, rides over a phone in between, and lands on another.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#12251C"/>
+      <stop offset="1" stop-color="#070F0B"/>
+    </linearGradient>
+    <!-- Left to right, dim to bright: the direction of travel. -->
+    <linearGradient id="hop" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3FC47E"/>
+      <stop offset="1" stop-color="#8BE8B4"/>
+    </linearGradient>
+    <!-- Punches the relay node's hole out of the wave itself, rather than
+         covering it with a disc of background colour. That keeps the mark
+         legible on any surface — a photo, a light page, a coloured card —
+         instead of only on the dark tile it was drawn for. -->
+    <mask id="node-hole">
+      <rect x="0" y="0" width="100" height="100" fill="#fff"/>
+      <circle cx="50" cy="50" r="6.2" fill="#000"/>
+    </mask>
+  </defs>
+
+  <!-- Opaque and square. Every platform applies its own corner mask; baking
+       rounded corners in here would show as a double rounding on Android. -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Drawn once in a 100-unit square and scaled, so icon, favicon and print
+       all come from the same geometry. -->
+  <g transform="translate(512 512) scale(10.24) translate(-50 -50)">
+    <path d="M 22 50 Q 36 -6 50 50 Q 64 106 78 50" mask="url(#node-hole)"
+          fill="none" stroke="url(#hop)" stroke-width="7.5" stroke-linecap="round"/>
+    <!-- Sender and recipient. Solid: they hold the message. -->
+    <circle cx="22" cy="50" r="8" fill="#3FC47E"/>
+    <circle cx="78" cy="50" r="8" fill="#8BE8B4"/>
+    <!-- The relay. Hollow: it carries the message and cannot read it. -->
+    <circle cx="50" cy="50" r="8" fill="none" stroke="#5FD97A" stroke-width="3.6"/>
+  </g>
+</svg>

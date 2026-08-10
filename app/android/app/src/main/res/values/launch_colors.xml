@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch window palette, light. The dark set is in values-night/.
+
+     The launch window is drawn by the OS before Flutter exists, so it cannot
+     read the user's in-app theme choice — it follows the system dark-mode
+     setting instead. That is the closest match available, and it is far better
+     than the Flutter default, which is plain white for an app that opens dark. -->
+<resources>
+    <color name="launch_background">#F2FBF5</color>
+    <color name="launch_mark_hop">#2FB26F</color>
+    <color name="launch_mark_start">#22A05F</color>
+    <color name="launch_mark_end">#3FC47E</color>
+    <color name="launch_mark_ring">#22A05F</color>
+</resources>

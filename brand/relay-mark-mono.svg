@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Relay">
+  <title>Relay</title>
+  <defs>
+    <mask id="node-hole">
+      <rect x="0" y="0" width="100" height="100" fill="#fff"/>
+      <circle cx="50" cy="50" r="6.2" fill="#000"/>
+    </mask>
+  </defs>
+
+  <!-- One flat colour on a transparent ground.
+       Android 13+ themed icons tint this to whatever the user's wallpaper
+       produces, so it can carry no colour of its own and has to survive being
+       rendered in a single tone. That is the reason the relay node is a ring
+       rather than a paler dot: a tonal difference would disappear here, and a
+       hole cannot. -->
+  <g transform="translate(512 512) scale(9.0) translate(-50 -50)" fill="#000000" stroke="#000000">
+    <path d="M 22 50 Q 36 -6 50 50 Q 64 106 78 50" mask="url(#node-hole)"
+          fill="none" stroke-width="7.5" stroke-linecap="round"/>
+    <circle cx="22" cy="50" r="8" stroke="none"/>
+    <circle cx="78" cy="50" r="8" stroke="none"/>
+    <circle cx="50" cy="50" r="8" fill="none" stroke-width="3.6"/>
+  </g>
+</svg>

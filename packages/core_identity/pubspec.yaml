@@ -1,0 +1,18 @@
+name: core_identity
+description: Key lifecycle, contact pinning, safety phrases and room-code derivation.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+resolution: workspace
+
+dependencies:
+  core_crypto: ^0.1.0
+  cryptography: ^2.7.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

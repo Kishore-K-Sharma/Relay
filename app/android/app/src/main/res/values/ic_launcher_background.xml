@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Flat rather than the gradient the square mark uses. A launcher may
+         scale, parallax and re-crop this layer, and a gradient shifts visibly
+         when it does. This is the midpoint of that gradient. -->
+    <color name="ic_launcher_background">#0D1B14</color>
+</resources>

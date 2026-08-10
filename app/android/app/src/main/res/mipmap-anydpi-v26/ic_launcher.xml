@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon. The launcher crops these layers to whatever shape the device
+     uses — circle, squircle, teardrop — so the foreground keeps the whole mark
+     inside the guaranteed middle 66%.
+
+     The monochrome layer is what Android 13+ tints to match the user's
+     wallpaper. Omitting it does not break anything; it just means the icon
+     stays a bright green tile on a phone where every other icon has gone
+     muted, which is conspicuous — and being conspicuous is the one thing this
+     app should not be by accident. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+</adaptive-icon>

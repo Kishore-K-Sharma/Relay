@@ -1,0 +1,31 @@
+name: relay_workspace
+description: Workspace root for Relay. Holds no application code of its own.
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+# Listed in dependency order rather than alphabetically: the pure packages
+# first, then storage and orchestration, then the transports and the app.
+workspace:
+  - packages/core_protocol
+  - packages/core_crypto
+  - packages/core_identity
+  - packages/data
+  - packages/messaging
+  - packages/transport_api
+  - packages/transport_ble
+  - packages/transport_fake
+  - packages/transport_nostr
+  - packages/transport_wifi
+  - app
+
+# The root package exists only so that `dart run tools/generate_vectors.dart`
+# resolves. The vectors are the contract the Kotlin and Swift relays are held
+# to, and generating them means encoding real frames.
+dependencies:
+  core_protocol: ^0.1.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch window palette, dark. See values/launch_colors.xml.
+
+     This is the one that matters most. The app opens dark by default because it
+     is used at night and outdoors, where a bright screen ruins night vision and
+     marks somebody out — and a full-screen white flash on the way in defeats
+     that completely, however briefly. -->
+<resources>
+    <color name="launch_background">#070F0B</color>
+    <color name="launch_mark_hop">#5FD97A</color>
+    <color name="launch_mark_start">#3FC47E</color>
+    <color name="launch_mark_end">#8BE8B4</color>
+    <color name="launch_mark_ring">#5FD97A</color>
+</resources>

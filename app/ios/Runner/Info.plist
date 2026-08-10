@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Relay</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Relay</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<!-- True, and deliberately so. The app implements its own end-to-end
+	     encryption with ChaCha20-Poly1305, X25519, Ed25519 and secp256k1.
+	     This is not the HTTPS-only exemption, and declaring false would be a
+	     false statement to Apple. See docs/RELEASE.md section 2 — an export
+	     exemption may still apply, but it has to be claimed properly rather
+	     than by misdeclaring what the app does. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<!-- Required so iOS relaunches the app into the background on BLE
+		     events. Without both roles the mesh dies the moment the app is
+		     backgrounded. App Review requires a justification for these. -->
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+	</array>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Relay uses Bluetooth to find people near you and pass messages between phones when there is no signal. It never uses your location.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Relay uses Bluetooth so nearby phones can discover you and relay messages when there is no signal.</string>
+	<!-- Since iOS 14 an app cannot touch the local network without this string
+	     and the service list below it. Both are load-bearing: with either one
+	     missing, Bonjour silently finds nothing and the app has no way to tell
+	     the user why. The service type must match Android's exactly. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Relay uses your Wi-Fi network to find other people on it and pass messages directly between phones. It works even when the network has no internet connection, and nothing is sent to any server.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_kishorek-relay._tcp</string>
+	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Relay needs the microphone to record voice notes.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Relay needs the camera to scan a friend's QR code so their identity can be verified.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

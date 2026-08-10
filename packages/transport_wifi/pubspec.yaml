@@ -1,0 +1,21 @@
+name: transport_wifi
+description: The local-network transport. Finds peers on the same Wi-Fi with mDNS and carries frames over TCP, for the case where a router exists but the internet does not.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  transport_api: ^0.1.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0
+  pigeon: ^26.0.4

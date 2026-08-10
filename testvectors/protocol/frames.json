@@ -1,0 +1,308 @@
+{
+  "protocolVersion": 1,
+  "frameHeaderLength": 20,
+  "maxTtl": 7,
+  "maxPayloadLength": 165,
+  "vectors": [
+    {
+      "name": "type-announce",
+      "frame": {
+        "version": 1,
+        "type": "announce",
+        "typeWire": 1,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01010701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-handshake",
+      "frame": {
+        "version": 1,
+        "type": "handshake",
+        "typeWire": 2,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01020701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-message",
+      "frame": {
+        "version": 1,
+        "type": "message",
+        "typeWire": 3,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01030701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-ack",
+      "frame": {
+        "version": 1,
+        "type": "ack",
+        "typeWire": 4,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01040701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-fragment",
+      "frame": {
+        "version": 1,
+        "type": "fragment",
+        "typeWire": 5,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01050701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-room",
+      "frame": {
+        "version": 1,
+        "type": "room",
+        "typeWire": 6,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01060701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-voice",
+      "frame": {
+        "version": 1,
+        "type": "voice",
+        "typeWire": 7,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01070701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-leave",
+      "frame": {
+        "version": 1,
+        "type": "leave",
+        "typeWire": 8,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01080701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-historyRequest",
+      "frame": {
+        "version": 1,
+        "type": "historyRequest",
+        "typeWire": 9,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "01090701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-historyReply",
+      "frame": {
+        "version": 1,
+        "type": "historyReply",
+        "typeWire": 10,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "010a0701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-roomControl",
+      "frame": {
+        "version": 1,
+        "type": "roomControl",
+        "typeWire": 11,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "010b0701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-batch",
+      "frame": {
+        "version": 1,
+        "type": "batch",
+        "typeWire": 12,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "010c0701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "type-courier",
+      "frame": {
+        "version": 1,
+        "type": "courier",
+        "typeWire": 13,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0101010101010101",
+        "srcHash": 287454020,
+        "dstHash": 2864434397,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1"
+      },
+      "encodedHex": "010d0701010101010101010111223344aabbccdd001f3e5d7c9bbad9f81736557493b2d1"
+    },
+    {
+      "name": "empty-payload",
+      "frame": {
+        "version": 1,
+        "type": "ack",
+        "typeWire": 4,
+        "ttl": 0,
+        "flags": {
+          "encrypted": false,
+          "fragmented": false,
+          "compressed": false,
+          "urgent": false
+        },
+        "msgId": "0202020202020202",
+        "srcHash": 0,
+        "dstHash": 0,
+        "payloadHex": ""
+      },
+      "encodedHex": "0104000002020202020202020000000000000000"
+    },
+    {
+      "name": "broadcast-all-flags",
+      "frame": {
+        "version": 1,
+        "type": "announce",
+        "typeWire": 1,
+        "ttl": 7,
+        "flags": {
+          "encrypted": true,
+          "fragmented": true,
+          "compressed": true,
+          "urgent": true
+        },
+        "msgId": "ffffffffffffffff",
+        "srcHash": 4294967295,
+        "dstHash": 0,
+        "payloadHex": "001f3e5d7c9bbad9f81736557493b2d1f00f2e4d6c8baac9e80726456483a2c1e0ff1e3d5c7b9ab9d8f71635547392b1d0ef0e2d4c6b8aa9c8e70625446382a1c0dffe1d3c5b7a99b8d7f61534537291b0cfee0d2c4b6a89a8c7e60524436281a0bfdefd1c3b5a7998b7d6f51433527190afceed0c2b4a6988a7c6e504234261809fbeddfc1b3a597897b6d5f4133251708faecdec0b2a496887a6c5e4032241607f9ebddc"
+      },
+      "encodedHex": "0101070fffffffffffffffffffffffff00000000001f3e5d7c9bbad9f81736557493b2d1f00f2e4d6c8baac9e80726456483a2c1e0ff1e3d5c7b9ab9d8f71635547392b1d0ef0e2d4c6b8aa9c8e70625446382a1c0dffe1d3c5b7a99b8d7f61534537291b0cfee0d2c4b6a89a8c7e60524436281a0bfdefd1c3b5a7998b7d6f51433527190afceed0c2b4a6988a7c6e504234261809fbeddfc1b3a597897b6d5f4133251708faecdec0b2a496887a6c5e4032241607f9ebddc"
+    }
+  ]
+}

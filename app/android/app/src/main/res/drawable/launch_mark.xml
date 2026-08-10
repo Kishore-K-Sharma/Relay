@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Relay mark for the launch window, as a vector so one file covers every
+     density and nothing has to be re-exported when the shape changes.
+
+     Same geometry as brand/relay-mark.svg, in the same 100-unit space. Every
+     colour is a resource, so values-night supplies the dark palette and this
+     file is not duplicated. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- The hop. -->
+    <path
+        android:pathData="M22,50 Q36,-6 50,50 Q64,106 78,50"
+        android:strokeColor="@color/launch_mark_hop"
+        android:strokeWidth="7.5"
+        android:strokeLineCap="round" />
+
+    <!-- Punches the relay node's hole out of the wave. A vector drawable has no
+         blend modes, so unlike the SVG this is a disc in the background colour
+         rather than a real hole. It is only ever drawn on that background, so
+         the difference does not show — but do not lift this file onto anything
+         else expecting it to be transparent there. -->
+    <path
+        android:pathData="M43.8,50 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0"
+        android:fillColor="@color/launch_background" />
+
+    <!-- Sender and recipient. -->
+    <path
+        android:pathData="M14,50 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"
+        android:fillColor="@color/launch_mark_start" />
+    <path
+        android:pathData="M70,50 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"
+        android:fillColor="@color/launch_mark_end" />
+
+    <!-- The relay: hollow, because it carries the message and cannot read it. -->
+    <path
+        android:pathData="M42,50 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"
+        android:strokeColor="@color/launch_mark_ring"
+        android:strokeWidth="3.6" />
+</vector>

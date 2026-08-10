@@ -1,0 +1,43 @@
+name: relay_app
+description: Offline-first group chat for crowds, over Bluetooth LE and the local network.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  core_protocol: ^0.1.0
+  core_crypto: ^0.1.0
+  core_identity: ^0.1.0
+  data: ^0.1.0
+  messaging: ^0.1.0
+  transport_api: ^0.1.0
+  transport_ble: ^0.1.0
+  transport_nostr: ^0.1.0
+  transport_wifi: ^0.1.0
+  # Bundles the SQLite library itself. package:sqlite3 links against the system
+  # one, which does not exist on Android and is an old build on iOS.
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  characters: ^1.3.0
+  flutter_secure_storage: ^9.2.2
+  mobile_scanner: ^7.0.0
+  qr_flutter: ^4.1.0
+  record: ^6.0.0
+  just_audio: ^0.9.42
+  permission_handler: ^12.0.0
+  web_socket_channel: ^3.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

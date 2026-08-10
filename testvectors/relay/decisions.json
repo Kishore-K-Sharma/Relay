@@ -1,0 +1,149 @@
+{
+  "suppressionThreshold": 2,
+  "jitterMinMs": 20,
+  "jitterMaxMs": 150,
+  "dedupMaxEntries": 2000,
+  "dedupExpirySeconds": 600,
+  "vectors": [
+    {
+      "name": "addressed-to-us-delivers-and-stops",
+      "localHash": 43690,
+      "priorSeen": [],
+      "input": {
+        "fromPeer": "p1",
+        "encodedHex": "0103050101010101010101010000bbbb0000aaaa001f3e5d7c9bbad9"
+      },
+      "expect": {
+        "deliverLocally": true,
+        "relay": false,
+        "drop": null,
+        "excludePeer": "p1"
+      },
+      "note": "A frame that reached its destination must not be forwarded again."
+    },
+    {
+      "name": "broadcast-delivers-and-relays",
+      "localHash": 43690,
+      "priorSeen": [],
+      "input": {
+        "fromPeer": "p1",
+        "encodedHex": "0103050101010101010101010000bbbb00000000001f3e5d7c9bbad9"
+      },
+      "expect": {
+        "deliverLocally": true,
+        "relay": true,
+        "relayTtl": 4,
+        "drop": null,
+        "excludePeer": "p1"
+      }
+    },
+    {
+      "name": "for-other-relays-only",
+      "localHash": 43690,
+      "priorSeen": [],
+      "input": {
+        "fromPeer": "p1",
+        "encodedHex": "0103050101010101010101010000bbbb0000cccc001f3e5d7c9bbad9"
+      },
+      "expect": {
+        "deliverLocally": false,
+        "relay": true,
+        "relayTtl": 4,
+        "drop": null,
+        "excludePeer": "p1"
+      }
+    },
+    {
+      "name": "hop-limit-reached-drops",
+      "localHash": 43690,
+      "priorSeen": [],
+      "input": {
+        "fromPeer": "p1",
+        "encodedHex": "0103000101010101010101010000bbbb0000cccc001f3e5d7c9bbad9"
+      },
+      "expect": {
+        "deliverLocally": false,
+        "relay": false,
+        "drop": "hopLimitReached",
+        "excludePeer": "p1"
+      }
+    },
+    {
+      "name": "duplicate-drops",
+      "localHash": 43690,
+      "priorSeen": [
+        {
+          "msgId": "0909090909090909",
+          "fragmentIndex": "-1"
+        }
+      ],
+      "input": {
+        "fromPeer": "p2",
+        "encodedHex": "0103050109090909090909090000bbbb0000cccc001f3e5d7c9bbad9"
+      },
+      "expect": {
+        "deliverLocally": false,
+        "relay": false,
+        "drop": "duplicate",
+        "excludePeer": "p2"
+      }
+    },
+    {
+      "name": "own-frame-echo-drops",
+      "localHash": 43690,
+      "priorSeen": [],
+      "input": {
+        "fromPeer": "p1",
+        "encodedHex": "0103050101010101010101010000aaaa0000cccc001f3e5d7c9bbad9"
+      },
+      "expect": {
+        "deliverLocally": false,
+        "relay": false,
+        "drop": "ownFrame",
+        "excludePeer": "p1"
+      }
+    },
+    {
+      "name": "second-fragment-of-known-message-still-relays",
+      "localHash": 43690,
+      "priorSeen": [
+        {
+          "msgId": "1414141414141414",
+          "fragmentIndex": "0"
+        }
+      ],
+      "input": {
+        "fromPeer": "p1",
+        "encodedHex": "0105050314141414141414140000bbbb0000cccc0001000203607f9ebddcfb1a39587796b5d4f31231506f8eadcceb0a29486786a5c4e30221405f7e9dbcdbfa1938577695b4d3f211304f6e8daccbea0928476685a4c3e201203f5e7d9cbbdaf91837567594b3d2f1102f4e6d8cabcae90827466584a3c2e1001f3e5d7c9bbad9f81736557493b2d1f00f2e4d6c8baac9e80726456483a2c1e0ff1e3d5c7b9ab9d8f71635547392b1d0ef0e2d4c6b8aa9c8e70625446382a1"
+      },
+      "expect": {
+        "deliverLocally": false,
+        "relay": true,
+        "relayTtl": 4,
+        "drop": null,
+        "excludePeer": "p1"
+      },
+      "note": "Fragments share one msgId. Deduplication keys on (msgId, fragmentIndex) or multi-fragment messages never propagate."
+    },
+    {
+      "name": "repeat-of-same-fragment-drops",
+      "localHash": 43690,
+      "priorSeen": [
+        {
+          "msgId": "1414141414141414",
+          "fragmentIndex": "0"
+        }
+      ],
+      "input": {
+        "fromPeer": "p2",
+        "encodedHex": "0105050314141414141414140000bbbb0000cccc0000000203001f3e5d7c9bbad9f81736557493b2d1f00f2e4d6c8baac9e80726456483a2c1e0ff1e3d5c7b9ab9d8f71635547392b1d0ef0e2d4c6b8aa9c8e70625446382a1c0dffe1d3c5b7a99b8d7f61534537291b0cfee0d2c4b6a89a8c7e60524436281a0bfdefd1c3b5a7998b7d6f51433527190afceed0c2b4a6988a7c6e504234261809fbeddfc1b3a597897b6d5f4133251708faecdec0b2a496887a6c5e4032241"
+      },
+      "expect": {
+        "deliverLocally": false,
+        "relay": false,
+        "drop": "duplicate",
+        "excludePeer": "p2"
+      }
+    }
+  ]
+}

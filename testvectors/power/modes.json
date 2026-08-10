@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "The power modes, as a contract shared by Dart, Kotlin and Swift.",
+    "",
+    "Only the cross-platform semantics are pinned here. The scan and advertise",
+    "constants are platform enums and have no common meaning; the numbers below",
+    "do. `estimatedDrainPercentPerHour` in particular is shown to the user in",
+    "Settings next to their choice, so if the Dart figure and the native duty",
+    "cycle drift apart the app is lying about what the setting costs.",
+    "",
+    "These are engineering estimates until the Phase 6 battery measurement is",
+    "done on real hardware. See docs/FIELD-TEST.md for the protocol. When the",
+    "measured figures arrive, change this file first and then make all three",
+    "implementations match it."
+  ],
+  "measured": false,
+  "modes": [
+    {
+      "name": "performance",
+      "estimatedDrainPercentPerHour": 12.0,
+      "announceIntervalMs": 15000
+    },
+    {
+      "name": "balanced",
+      "estimatedDrainPercentPerHour": 5.0,
+      "announceIntervalMs": 45000
+    },
+    {
+      "name": "saver",
+      "estimatedDrainPercentPerHour": 2.5,
+      "announceIntervalMs": 120000
+    },
+    {
+      "name": "ultraLow",
+      "estimatedDrainPercentPerHour": 1.0,
+      "announceIntervalMs": 300000
+    }
+  ]
+}
