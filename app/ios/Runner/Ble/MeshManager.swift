@@ -236,11 +236,22 @@ final class MeshManager: NSObject {
     }
 
     /// An announce is plaintext by necessity: strangers have to be able to read
-    /// it or discovery cannot happen. It carries a nickname and a signed session
-    /// key, never a long-term identifier.
+    /// it or discovery cannot happen.
+    ///
+    /// The key material is an opaque blob built by Dart — identity key, Noise
+    /// key and a signature over both — and is appended here byte for byte.
+    /// This layer deliberately cannot construct it: the signing key never
+    /// leaves Dart, and a second implementation of the payload format is
+    /// exactly how the two sides drift apart.
     private func broadcastAnnounce() {
-        var name = Array(announceNickname.utf8)
-        if name.count > 32 { name = Array(name.prefix(32)) }
+        // Dart truncates on a character boundary before handing the name over,
+        // so this only ever fires on a build mismatch — but it cuts on a
+        // boundary too. Slicing UTF-8 at a byte offset splits a character and
+        // puts a replacement glyph in somebody's name on every device in
+        // range, which is exactly what the Dart side goes to trouble to avoid.
+        var trimmed = announceNickname
+        while trimmed.utf8.count > 32 { trimmed.removeLast() }
+        let name = Array(trimmed.utf8)
 
         var payload = Data([UInt8(name.count)])
         payload.append(contentsOf: name)
@@ -254,9 +265,12 @@ final class MeshManager: NSObject {
         let frame = Frame(
             version: Wire.protocolVersion,
             type: .announce,
-            // Presence is local. Flooding it seven hops would swamp the mesh
-            // with beacons from people nobody can actually reach.
-            ttl: 1,
+            // Zero, not one. Presence is local: a neighbour delivers a
+            // broadcast upward before the hop counter is looked at, so
+            // everyone in range still sees this and nobody rebroadcasts it.
+            // At ttl 1 every neighbour relays it once and presence travels two
+            // hops, filling the mesh with beacons from people nobody can reach.
+            ttl: 0,
             flags: FrameFlags(),
             msgId: msgId,
             srcHash: addressHash,

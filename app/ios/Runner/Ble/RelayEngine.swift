@@ -14,6 +14,7 @@ enum Wire {
     static let jitterMax: TimeInterval = 0.150
     static let suppressionThreshold = 2
     static let witnessExpiry: TimeInterval = 30
+    static let witnessMaxEntries = 2000
 }
 
 enum FrameType: UInt8 {
@@ -34,17 +35,32 @@ enum FrameType: UInt8 {
     case roomControl = 0x0B
     case batch = 0x0C
 
-    // Somebody else's mail, handed over in person. Always arrives with ttl 1,
-    // so it is recognised here and then dropped by the ordinary ttl rule
-    // rather than by a special case.
+    // Somebody else's mail, handed over in person. Always arrives with ttl 0
+    // and addressed to the carrier, so the addressee delivers it before the
+    // hop counter is looked at and every bystander drops it by the ordinary
+    // ttl rule, with no special case here.
     case courier = 0x0D
 }
 
+/// The four defined header flag bits, plus whatever occupies the reserved ones.
+///
+/// Bits 4-7 are unassigned. They are carried through decode and re-encode
+/// untouched rather than being cleared, because a relay that rewrites a header
+/// it does not understand makes every future flag undeployable: the first
+/// build to set one would find its frames silently stripped by every device
+/// still running this one. A relay forwards what it was given.
 struct FrameFlags: Equatable {
+    /// Bits 4-7: unassigned by this revision.
+    static let reservedMask: UInt8 = 0xF0
+
     var encrypted = false
     var fragmented = false
     var compressed = false
     var urgent = false
+
+    /// Bits 4-7 exactly as they arrived, already masked. Zero on anything this
+    /// build originates.
+    var reserved: UInt8 = 0
 
     /// All flags clear. Needed explicitly because declaring `init(byte:)`
     /// suppresses the memberwise initialiser Swift would otherwise synthesise.
@@ -55,11 +71,13 @@ struct FrameFlags: Equatable {
         fragmented = byte & 0x02 != 0
         compressed = byte & 0x04 != 0
         urgent = byte & 0x08 != 0
+        reserved = byte & FrameFlags.reservedMask
     }
 
     var byte: UInt8 {
         (encrypted ? 0x01 : 0) | (fragmented ? 0x02 : 0)
             | (compressed ? 0x04 : 0) | (urgent ? 0x08 : 0)
+            | (reserved & FrameFlags.reservedMask)
     }
 }
 
@@ -220,6 +238,14 @@ final class RelayEngine {
     private let jitterSource: (TimeInterval, TimeInterval) -> TimeInterval
     private var witnesses: [FrameKey: [String: TimeInterval]] = [:]
 
+    /// Insertion order for `witnesses`, which a Swift dictionary does not keep.
+    /// Bounded for the same reason `DedupSet` is: a device flooding distinct
+    /// message ids would otherwise grow the table at line rate for a whole
+    /// witness window, and the sweep that keeps it honest walks every entry on
+    /// every received frame. May hold keys the sweep has already removed;
+    /// eviction skips those.
+    private var witnessOrder: [FrameKey] = []
+
     private(set) var relayedCount = 0
     private(set) var droppedCount = 0
 
@@ -258,7 +284,10 @@ final class RelayEngine {
         }
 
         if frame.ttl == 0 {
-            droppedCount += 1
+            // Only a drop when nothing was done with it. A broadcast that
+            // arrives spent is still delivered upward, and counting that as a
+            // drop reports loss that did not happen.
+            if !deliverLocally { droppedCount += 1 }
             return RelayDecision(
                 deliverLocally: deliverLocally,
                 excludePeer: fromPeer,
@@ -285,17 +314,40 @@ final class RelayEngine {
         return heard.keys.filter { $0 != origin }.count >= Wire.suppressionThreshold
     }
 
-    func clear() { seen.clear(); witnesses.removeAll() }
+    func clear() { seen.clear(); witnesses.removeAll(); witnessOrder.removeAll() }
 
     private func recordWitness(_ key: FrameKey, peer: String) {
+        // A repeat observation of an existing id deliberately does not move it
+        // to the back, for the same reason a duplicate does not refresh a dedup
+        // entry: otherwise one peer repeating a single id keeps its own entry
+        // alive and evicts everybody else's.
+        if witnesses[key] == nil { witnessOrder.append(key) }
         witnesses[key, default: [:]][peer] = clock()
+
+        while witnesses.count > Wire.witnessMaxEntries, !witnessOrder.isEmpty {
+            let oldest = witnessOrder.removeFirst()
+            witnesses.removeValue(forKey: oldest)
+        }
     }
 
     private func sweepWitnesses() {
         let cutoff = clock() - Wire.witnessExpiry
+        var expired = false
         for (key, peers) in witnesses {
             let live = peers.filter { $0.value > cutoff }
-            if live.isEmpty { witnesses.removeValue(forKey: key) } else { witnesses[key] = live }
+            if live.isEmpty {
+                witnesses.removeValue(forKey: key)
+                expired = true
+            } else {
+                witnesses[key] = live
+            }
+        }
+        // The order list holds keys the sweep just removed. Left alone it grows
+        // without bound even while `witnesses` stays small, which is the leak
+        // the bound was added to prevent. Rebuilt here rather than in the
+        // eviction path so it costs nothing the sweep was not already paying.
+        if expired {
+            witnessOrder = witnessOrder.filter { witnesses[$0] != nil }
         }
     }
 }

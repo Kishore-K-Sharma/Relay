@@ -327,15 +327,31 @@ class Reassembler {
   void _enforceBounds({required MsgId protect}) {
     while (_partials.length > maxPartialMessages ||
         _bufferedBytes > maxBufferedBytes) {
+      // Insertion-ordered, so the first key that is not the arrival being
+      // protected is the oldest candidate.
       final oldest = _partials.keys.firstWhere(
         (id) => id != protect,
         orElse: () => protect,
       );
+
+      // Nothing left but the message that just arrived. It is over the bound
+      // on its own, so it can never complete and holding it only denies the
+      // space to messages that could — but it is still an eviction, and
+      // returning here rather than looping is what stops this spinning when
+      // `protect` alone exceeds `maxBufferedBytes`.
+      if (oldest == protect) {
+        final removed = _partials.remove(protect);
+        if (removed != null) {
+          _bufferedBytes -= removed.bufferedBytes;
+          _evictedCount++;
+        }
+        return;
+      }
+
       final removed = _partials.remove(oldest);
       if (removed == null) return;
       _bufferedBytes -= removed.bufferedBytes;
       _evictedCount++;
-      if (_partials.isEmpty) return;
     }
   }
 

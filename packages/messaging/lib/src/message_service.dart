@@ -826,11 +826,14 @@ class MessageService {
     for (final frame in fragmentFrame(
       Frame(
         type: FrameType.courier,
-        // One hop, always. Flooding would replicate the envelope outside the
-        // spray budget — the only thing bounding how much of the network one
-        // message consumes — and would be pointless besides: a mesh that can
-        // reach the recipient does not need a courier.
-        ttl: 1,
+        // Zero, not one. A frame addressed to us is delivered before the hop
+        // counter is looked at, so the carrier still receives this; a bystander
+        // is not the addressee, sees an exhausted counter and drops it. At
+        // ttl 1 every bystander in range would instead rebroadcast it once,
+        // replicating the envelope outside the spray budget — the only thing
+        // bounding how much of the network one message consumes — and
+        // advertising to a wider circle that this device is carrying mail.
+        ttl: 0,
         // The body is sealed, but the tag, expiry and copy count are readable
         // on purpose, so a carrier can decide whether to take it and when to
         // drop it. Claiming the frame is encrypted would misdescribe that.

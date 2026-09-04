@@ -49,6 +49,30 @@ class WifiTransport implements api.Transport {
 
   final Duration dialTimeout;
 
+  /// Connections accepted but still waiting to say hello.
+  ///
+  /// Each one costs a socket and a read buffer for up to [helloTimeout]. With
+  /// no ceiling, anybody on the network can open sockets until this device
+  /// runs out of file descriptors, and never send a byte. Sized well above a
+  /// crowded room, where every peer discovering this device at once legitimately
+  /// dials at once.
+  ///
+  /// When it is reached the *oldest* pending connection is dropped, not the
+  /// newest: the oldest has had the longest to introduce itself and is closest
+  /// to timing out anyway, and refusing new arrivals instead would let whoever
+  /// connected first hold every slot.
+  static const int maxPendingConnections = 128;
+
+  /// Established links, one per peer address.
+  ///
+  /// This bounds memory and descriptors. It does **not** stop a determined
+  /// attacker on the same network from occupying the table: a link is
+  /// established by sending a well-formed hello with any address hash it
+  /// likes, and this transport is deliberately blind to identity, so there is
+  /// nothing here to authenticate against. Bounding the damage is what is on
+  /// offer; preventing it needs a link-layer identity the design does not have.
+  static const int maxLinks = 256;
+
   /// Random per run. Recognising our own advertisement by address hash would
   /// be wrong — 32 bits collide in a large crowd, and the two devices sharing a
   /// hash would each conclude the other was itself.
@@ -278,6 +302,11 @@ class WifiTransport implements api.Transport {
   // ------------------------------------------------------------------ links
 
   Future<void> _adopt(LanLink link) async {
+    while (_pending.length >= maxPendingConnections) {
+      final oldest = _pending.first;
+      _pending.remove(oldest);
+      await oldest.close();
+    }
     _pending.add(link);
 
     final int peerHash;
@@ -308,6 +337,14 @@ class WifiTransport implements api.Transport {
     final existing = _links[peerHash];
     if (existing != null &&
         !_prefer(link, over: existing, peerHash: peerHash)) {
+      await link.close();
+      return;
+    }
+
+    // A new peer, with the table already full. Refused rather than evicting
+    // somebody: an established link is carrying traffic and this one has done
+    // nothing yet.
+    if (existing == null && _links.length >= maxLinks) {
       await link.close();
       return;
     }

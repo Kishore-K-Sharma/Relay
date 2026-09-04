@@ -253,13 +253,25 @@ class MeshForegroundService : Service() {
 
     /**
      * An announce is a plaintext broadcast: it has to be readable by strangers
-     * for discovery to work at all. It carries a nickname and a signed session
-     * key, never a long-term identifier.
+     * for discovery to work at all.
+     *
+     * The key material is an opaque blob built by Dart — identity key, Noise
+     * key and a signature over both — and is appended here byte for byte. This
+     * layer deliberately cannot construct it: the signing key never leaves
+     * Dart, and a second implementation of the payload format is exactly how
+     * the two sides drift apart.
      */
     private fun broadcastAnnounce() {
-        val name = announceNickname.toByteArray(Charsets.UTF_8).let {
-            if (it.size > 32) it.copyOfRange(0, 32) else it
+        // Dart truncates on a character boundary before handing the name over,
+        // so this only ever fires on a build mismatch — but it cuts on a
+        // boundary too. Slicing UTF-8 at a byte offset splits a character and
+        // puts a replacement glyph in somebody's name on every device in
+        // range, which is exactly what the Dart side goes to trouble to avoid.
+        var trimmed = announceNickname
+        while (trimmed.toByteArray(Charsets.UTF_8).size > 32) {
+            trimmed = trimmed.substring(0, trimmed.offsetByCodePoints(trimmed.length, -1))
         }
+        val name = trimmed.toByteArray(Charsets.UTF_8)
         val payload = ByteArray(1 + name.size + announcePayload.size)
         payload[0] = name.size.toByte()
         name.copyInto(payload, 1)
@@ -268,9 +280,12 @@ class MeshForegroundService : Service() {
         val frame = Frame(
             version = Wire.PROTOCOL_VERSION.toInt(),
             type = FrameType.ANNOUNCE,
-            // Presence is local. Flooding it seven hops would swamp the mesh
-            // with beacons from people nobody can actually reach.
-            ttl = 1,
+            // Zero, not one. Presence is local: a neighbour delivers a
+            // broadcast upward before the hop counter is looked at, so everyone
+            // in range still sees this and nobody rebroadcasts it. At ttl 1
+            // every neighbour relays it once and presence travels two hops,
+            // filling the mesh with beacons from people nobody can reach.
+            ttl = 0,
             flags = FrameFlags(),
             msgId = randomMsgId(),
             srcHash = addressHash,

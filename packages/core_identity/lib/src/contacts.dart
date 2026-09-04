@@ -38,6 +38,22 @@ class Contact {
 }
 
 /// In-memory contact list. Persistence is layered on top in the `data` package.
+///
+/// **Nothing in the app constructs this.** It is exercised only by its own
+/// tests. Two controls described below are therefore not active anywhere:
+/// key-change detection, and the rule that an over-the-air claim may not rename
+/// a verified contact. Read the code here as a proposal, not as a description
+/// of what the app does.
+///
+/// The rename hole is closed elsewhere, by a different mechanism: an announce
+/// must carry a signature by the identity key it claims before its nickname is
+/// believed — see `app/lib/src/domain/announce_trust.dart`. Key-change
+/// detection has no trigger in this design at all, because a key *is* an
+/// identity here: somebody arriving under a different key is a different
+/// contact and a different conversation, not a change to an existing one.
+///
+/// Kept rather than deleted because removing a security control and building
+/// one are different decisions. Tracked in `docs/SECURITY.md` §4.
 class ContactStore {
   final Map<String, Contact> _byKey = <String, Contact>{};
 

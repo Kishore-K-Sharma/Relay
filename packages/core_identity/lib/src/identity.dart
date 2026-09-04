@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
@@ -85,26 +86,48 @@ class SafetyCode {
   /// needing to agree on who is "first".
   static Future<SafetyCode> between(Uint8List a, Uint8List b) async {
     final ordered = _compare(a, b) <= 0 ? [a, b] : [b, a];
-    var digest = await blake2s(<int>[
+    final seed = Uint8List.fromList(<int>[
       ...'relay-safety-v1'.codeUnits,
       ...ordered[0],
       ...ordered[1],
     ]);
 
-    // Iterated hashing, as Signal does, so producing a colliding code costs an
-    // attacker the full work factor rather than a single hash.
+    // Off the calling isolate. The stretch below is thousands of hashes chained
+    // by `await`, and an awaited chain of already-complete futures drains as
+    // one run of the microtask queue — so on the UI isolate it blocks a frame
+    // or two rather than yielding between steps. Spawning costs a millisecond
+    // and this runs once, when a QR code is scanned.
+    final digest = await Isolate.run(() => _stretch(seed));
+
+    // Twelve 16-bit chunks, each printed as five digits. A chunk therefore
+    // spans 00000-65535 rather than the full five-digit range: the groups are
+    // not uniform over what they look like they cover. That is cosmetic — the
+    // code carries 192 bits either way — and it is left alone deliberately.
+    // Changing how these digits are rendered changes every safety code already
+    // written down, which is indistinguishable from an attack to the person
+    // comparing them.
+    final view = ByteData.view(Uint8List.fromList(digest).buffer);
+    final buffer = StringBuffer();
+    for (var i = 0; i < 12; i++) {
+      buffer.write(
+        view.getUint16(i * 2, Endian.big).toString().padLeft(5, '0'),
+      );
+    }
+    return SafetyCode(buffer.toString());
+  }
+
+  /// Iterated hashing, as Signal does, so producing a colliding code costs an
+  /// attacker the full work factor rather than a single hash.
+  ///
+  /// The count is part of the code's definition: changing it changes every
+  /// safety code already compared in person, which to the people comparing
+  /// them is indistinguishable from an attack.
+  static Future<Uint8List> _stretch(Uint8List seed) async {
+    var digest = await blake2s(seed);
     for (var i = 0; i < 5200; i++) {
       digest = await blake2s(digest);
     }
-
-    final buffer = StringBuffer();
-    for (var i = 0; i < 12; i++) {
-      final chunk = ByteData.view(
-        Uint8List.fromList(digest).buffer,
-      ).getUint16(i * 2, Endian.big);
-      buffer.write((chunk % 100000).toString().padLeft(5, '0'));
-    }
-    return SafetyCode(buffer.toString());
+    return digest;
   }
 
   static int _compare(Uint8List a, Uint8List b) {

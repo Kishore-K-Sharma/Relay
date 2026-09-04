@@ -17,6 +17,7 @@ import 'package:relay_app/src/runtime/app_state.dart';
 import 'package:relay_app/src/runtime/commands.dart';
 import 'package:relay_app/src/runtime/event_log.dart';
 import 'package:relay_app/src/runtime/haptics.dart';
+import 'package:relay_app/src/domain/announce_trust.dart';
 import 'package:relay_app/src/domain/mentions.dart';
 import 'package:relay_app/src/domain/models.dart' as ui;
 import 'package:relay_app/src/domain/pairing_payload.dart';
@@ -292,17 +293,14 @@ class MeshRuntime {
 
   // -------------------------------------------------------------- presence
 
-  /// Broadcasts who we are.
+  /// This device's announce, signed, exactly as it goes on the wire.
   ///
-  /// Plaintext by necessity: strangers cannot discover us if they cannot read
-  /// it. It carries a nickname and a signature over the address, never a
-  /// long-term secret.
-  Future<void> announcePresence() async {
-    if (state.status.stealthMode) return;
-
-    final signature = await identity.sign(identity.publicKey);
-
-    final payload = Announce(
+  /// One builder for both paths. Dart sends this frame directly; native
+  /// rebroadcasts the same bytes on its own timer, because Dart is not alive
+  /// in the background and a beacon that stops when the app closes is not a
+  /// beacon. Two builders would be two wire formats, and they would drift.
+  Future<Announce> _signedAnnounce() async {
+    final unsigned = Announce(
       nickname: state.nickname,
       identityKey: identity.publicKey,
       // Published so people who meet us can seal mail for us and hand it to
@@ -310,14 +308,56 @@ class MeshRuntime {
       // every Noise handshake already reveals to whoever we speak to — but
       // stating it here is what makes couriering possible at all.
       noiseStaticKey: await noiseStaticPublicKey,
-    ).encode();
+    );
+
+    // Signed over the nickname and both keys. Without this an announce is an
+    // unauthenticated claim, and the one that matters is the Noise key: anyone
+    // in range could rebind a person's courier key to their own by
+    // broadcasting that person's identity key — which is public — beside their
+    // own X25519 key, and mail for that person would be sealed to the
+    // attacker. Pinning a contact does not help, because verification covers
+    // the identity key and nothing binds the Noise key to it.
+    return unsigned.withSignature(
+      await identity.sign(Announce.signingInput(unsigned.encodeUnsigned())),
+    );
+  }
+
+  /// The beacon native rebroadcasts while Dart is not running.
+  ///
+  /// Returned split the way the platform API takes it: native supplies the
+  /// length-prefixed nickname and appends [keyBlob] byte for byte. The
+  /// nickname is already truncated here, because the signature covers those
+  /// exact bytes — native re-cutting the name would invalidate it.
+  Future<({String nickname, Uint8List keyBlob})> presenceBeacon() async {
+    final announce = await _signedAnnounce();
+    final payload = announce.encode();
+    // payload[0] is the nickname length, so everything past the name is the
+    // identity key, the Noise key and the signature.
+    return (
+      nickname: announce.nickname,
+      keyBlob: Uint8List.sublistView(payload, 1 + payload[0]),
+    );
+  }
+
+  /// Broadcasts who we are.
+  ///
+  /// Plaintext by necessity: strangers cannot discover us if they cannot read
+  /// it. It carries a nickname, two public keys and a signature over all
+  /// three, never a long-term secret.
+  Future<void> announcePresence() async {
+    if (state.status.stealthMode) return;
+
+    final payload = (await _signedAnnounce()).encode();
 
     await _router.send(
       Frame(
         type: FrameType.announce,
-        // Presence is local. Flooding it seven hops would swamp the mesh with
-        // beacons from people nobody can actually reach.
-        ttl: 1,
+        // Zero, not one. Presence is local: a neighbour delivers a broadcast
+        // upward before the hop counter is looked at, so everyone in range
+        // still sees this, and nobody rebroadcasts it. At ttl 1 every
+        // neighbour would relay it once and presence would travel two hops,
+        // filling the mesh with beacons from people nobody can reach.
+        ttl: 0,
         flags: const FrameFlags(),
         msgId: _messages.newMsgId(),
         srcHash: localAddressHash,
@@ -325,10 +365,6 @@ class MeshRuntime {
         payload: payload,
       ).encode(),
     );
-
-    // Unused for now but computed so a future revision can pin the announce to
-    // the signing key without changing the wire format.
-    assert(signature.isNotEmpty);
   }
 
   // -------------------------------------------------------------- inbound
@@ -381,7 +417,7 @@ class MeshRuntime {
   ) async {
     switch (message.type) {
       case FrameType.announce:
-        _handleAnnounce(message, fromPeer);
+        await _handleAnnounce(message, fromPeer);
       case FrameType.handshake:
         await _handleHandshake(message, fromPeer);
       case FrameType.message:
@@ -410,17 +446,43 @@ class MeshRuntime {
     }
   }
 
-  void _handleAnnounce(ReassembledMessage frame, String fromPeer) {
+  Future<void> _handleAnnounce(
+    ReassembledMessage frame,
+    String fromPeer,
+  ) async {
     final announce = Announce.decode(frame.payload);
     if (announce == null) return;
+
+    final trust = await checkAnnounce(announce, frame.payload);
+    if (trust == AnnounceTrust.forged) return;
+
+    // The address mapping is taken either way. It only says which radio peer
+    // is claiming which routing hash, a claim the handshake path already
+    // accepts unverified, and getting it wrong means a direct message goes
+    // nowhere rather than somewhere else — Noise authenticates the session
+    // itself, not this table.
+    _peerAddress[fromPeer] = frame.srcHash;
+    _addressPeer[frame.srcHash] = fromPeer;
+    // An announce is proof of reachability in its own right. The transport may
+    // not have raised a discovery event — a relayed announce never will.
+    _reachable[fromPeer] ??= 1;
+
+    // Everything below is a claim about *who* this is, and an unsigned
+    // announce cannot support one. Believing the nickname would let anyone in
+    // range rename a verified contact's conversation by broadcasting; believing
+    // the identity key would let them be treated as a trusted courier and
+    // handed other people's mail; believing the Noise key would redirect that
+    // person's mail to whoever sent this.
+    if (trust != AnnounceTrust.signed) {
+      _publishPeers();
+      return;
+    }
 
     final nickname = announce.nickname;
     if (!_peerNickname.containsKey(fromPeer) && nickname.isNotEmpty) {
       log.info('$nickname came into range');
     }
 
-    _peerAddress[fromPeer] = frame.srcHash;
-    _addressPeer[frame.srcHash] = fromPeer;
     if (nickname.isNotEmpty) _peerNickname[fromPeer] = nickname;
 
     // Held so blocking and verification can name a person by their real key
@@ -438,10 +500,6 @@ class MeshRuntime {
         noiseStaticKey: noiseKey,
       );
     }
-
-    // An announce is proof of reachability in its own right. The transport may
-    // not have raised a discovery event — a relayed announce never will.
-    _reachable[fromPeer] ??= 1;
 
     _publishPeers();
 
@@ -1663,9 +1721,18 @@ class MeshRuntime {
 
   /// Records that the user compared codes in person and they matched.
   ///
-  /// Pinning is what makes a later impersonation attempt visible: if the key
-  /// changes afterwards, the conversation shows a warning instead of quietly
-  /// talking to someone else.
+  /// What pinning buys is the verified badge, entry to the courier trust tier,
+  /// and a safety code stored for re-comparison later.
+  ///
+  /// What it does *not* buy is a key-change warning, and the difference is
+  /// worth stating because it is the opposite of what Signal trains people to
+  /// expect. There, an identity is a phone number and the key beneath it can
+  /// change; here the key *is* the identity, and every address, conversation
+  /// and safety code is derived from it. Somebody impersonating a verified
+  /// contact necessarily arrives under a different key, so they appear as a
+  /// separate, unverified conversation rather than as a change to this one.
+  /// The badge is what carries the signal, which is why its absence has to be
+  /// as visible in the UI as its presence.
   Future<void> verifyContact(PairingPayload payload) async {
     final code = await safetyCodeWith(payload.identityKey);
 

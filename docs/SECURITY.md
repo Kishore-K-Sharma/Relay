@@ -353,10 +353,44 @@ Ordered by how much a finding here would matter.
    timing and recipient tags alone.
 5. **Argon2id parameters** were chosen for a target derivation time, not from a
    measured attacker cost model.
+5a. **`ContactStore` is dead code that looks like a security control.**
+   `packages/core_identity/lib/src/contacts.dart` implements key-change
+   detection and a rule that an over-the-air claim may not rename a verified
+   contact. It is exported, it is tested, and no production code constructs it.
+   A reviewer reading it would reasonably conclude both controls are active.
+   Neither is. The rename hole it describes is now closed a different way — an
+   announce must be signed by the identity key it claims before its nickname is
+   believed (§3.1a of ARCHITECTURE.md) — and key-change detection does not
+   apply in a design where the key *is* the identity. Left in place, and listed
+   here, rather than deleted silently: whether to remove it or build something
+   on it is a decision, not a cleanup.
 6. **The Wi-Fi link layer** (§3.6). New attack surface: an unauthenticated TCP
    connection from anyone on the same network. The parser is small and the tests
    include hostile lengths and non-Relay traffic, but it has had no adversarial
    review.
+
+   A first pass over it found two real faults, both now fixed and both guarded
+   by tests that were checked against the broken code:
+
+   - The reader flattened its whole accumulated buffer on every read, so the
+     cost of receiving one message was quadratic in the number of pieces it
+     arrived in — a number the sender chooses. Dribbling a 64 KiB frame in
+     one-byte writes cost the receiver about 130 ms of CPU, unauthenticated and
+     before the hello. It is now a buffer with a read cursor.
+   - A frame arriving in the same packet as the hello was silently discarded,
+     because the frame stream was a broadcast controller and the transport
+     subscribes only after awaiting the hello. Now single-subscription, so
+     early events are buffered rather than dropped, and a frame *before* the
+     hello hangs up the link instead of being carried for a peer with no name.
+
+   Connection limits were also added — 128 pending, 256 established. These bound
+   memory and descriptors against a flood. They do **not** stop a determined
+   attacker on the same network from occupying the link table: a link is
+   established by sending a well-formed hello carrying any address hash the
+   sender likes, and this transport is deliberately blind to identity, so there
+   is nothing to authenticate against. Preventing that, rather than bounding it,
+   needs a link-layer identity the design does not currently have. A reviewer
+   should treat the table as attacker-fillable.
 7. **An unsolicited handshake displaces an established session.** *Found while
    writing the collision tests below; not yet fixed.* A completed Noise XX
    handshake offered at a peer's address hash replaces whatever session was
@@ -367,9 +401,18 @@ Ordered by how much a finding here would matter.
 
    It is a denial of service and not a disclosure: the intruder holds a session
    under their own static key and cannot read anything sealed to the previous
-   one, and a pinned contact still shows as key-changed rather than being
-   silently impersonated. `packages/messaging/test/address_collision_test.dart`
-   contains a test named `OPEN FINDING` that fails the moment this changes.
+   one. `packages/messaging/test/address_collision_test.dart` contains a test
+   named `OPEN FINDING` that fails the moment this changes.
+
+   This paragraph used to add "and a pinned contact still shows as key-changed
+   rather than being silently impersonated". That was wrong, and it is worth
+   recording why rather than quietly deleting it. `TrustState.keyChanged`
+   exists, and the UI renders it, but nothing ever sets it — the type lives in
+   `ContactStore`, which no production code constructs. It is also not the
+   right defence here: in this design a key *is* an identity, so an impostor
+   necessarily arrives as a separate unverified conversation rather than as a
+   change to an existing one. The verified badge is what carries the signal.
+   See §7.
 
    The fix is not mechanical, which is why it is listed rather than done. A
    peer that reinstalls, or is panic-wiped, legitimately arrives with a new

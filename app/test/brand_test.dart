@@ -158,29 +158,75 @@ void main() {
       }
     });
 
-    test('the Xcode project still points at files that exist', () {
+    test('every Swift file the Xcode project declares exists at its path', () {
       // Renaming a Swift file on disk does not rename it in project.pbxproj,
       // and nothing in the Dart toolchain notices. The first sign is the iOS
-      // build failing on a machine that can run one — which, here, is not this
-      // one. Renaming the two BLE plugin files during the rebrand broke
-      // exactly this, and every test still passed.
+      // build failing on a machine that can run one.
+      //
+      // This resolves each path the way Xcode does — through the groups that
+      // enclose it — rather than asking whether a file by that name exists
+      // somewhere. Two weaker versions of this test already let real breakage
+      // through. One collected bare filenames, and passed while all nine mesh
+      // sources were declared at `Runner/Ble/...` inside a group that already
+      // carries `path = Runner`; Xcode resolved that to `Runner/Runner/Ble/...`
+      // and the build could not start. The names were right the whole time.
+      // The next version searched a handful of plausible roots, and passed on
+      // the same bug for the same reason: `app/ios/` + `Runner/Ble/x.swift`
+      // happens to hit the real file. Only the enclosing group knows what a
+      // path means.
       final project = read('app/ios/Runner.xcodeproj/project.pbxproj');
 
-      final referenced = RegExp(r'[A-Za-z0-9_+\-.]+\.swift')
-          .allMatches(project)
-          .map((m) => m[0]!)
-          // `lastKnownFileType = sourcecode.swift` is a type, not a file.
-          .where((name) => !name.startsWith('sourcecode'))
-          .toSet();
-      expect(referenced, isNotEmpty, reason: 'the pattern stopped matching');
+      // id -> declared path, for every file reference naming a Swift file.
+      final files = <String, String>{
+        for (final m in RegExp(
+          r'([0-9A-Za-z]+) /\*.*?\*/ = \{isa = PBXFileReference;[^}]*?'
+          r'path = ([^;]+\.swift);',
+        ).allMatches(project))
+          m[1]!: m[2]!,
+      };
+      expect(files, isNotEmpty, reason: 'the file-reference pattern broke');
 
-      final onDisk = Directory(resolve('app/ios'))
-          .listSync(recursive: true)
-          .whereType<File>()
-          .map((f) => f.uri.pathSegments.last)
-          .toSet();
+      // id -> (own path segment, children). A group without a path contributes
+      // nothing to the prefix but still passes its parent's down.
+      final groupPath = <String, String>{};
+      final parentOf = <String, String>{};
+      final groups = RegExp(
+        r'([0-9A-Za-z]+) /\*.*?\*/ = \{\s*isa = PBXGroup;\s*'
+        r'children = \(([^)]*)\);([^}]*)\}',
+      ).allMatches(project);
+      expect(groups, isNotEmpty, reason: 'the group pattern broke');
 
-      expect(referenced.difference(onDisk), isEmpty);
+      for (final group in groups) {
+        final id = group[1]!;
+        final own = RegExp(r'path = ([^;]+);').firstMatch(group[3]!);
+        if (own != null) groupPath[id] = own[1]!;
+        for (final child in RegExp(
+          r'([0-9A-Za-z]+) /\*',
+        ).allMatches(group[2]!)) {
+          parentOf[child[1]!] = id;
+        }
+      }
+
+      final unresolved = <String>[];
+      for (final entry in files.entries) {
+        final segments = <String>[entry.value];
+        for (var at = parentOf[entry.key]; at != null; at = parentOf[at]) {
+          final segment = groupPath[at];
+          if (segment != null) segments.insert(0, segment);
+        }
+        final resolved =
+            '${Directory(resolve('app/ios')).path}/'
+            '${segments.join('/')}';
+        if (!File(resolved).existsSync()) {
+          unresolved.add(segments.join('/'));
+        }
+      }
+
+      expect(
+        unresolved,
+        isEmpty,
+        reason: 'declared in project.pbxproj but absent at the resolved path',
+      );
     });
 
     test('neither platform launches white', () {

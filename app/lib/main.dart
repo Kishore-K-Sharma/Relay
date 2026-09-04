@@ -145,7 +145,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     state.addListener(_onChanged);
     // `/nick` changes the name in memory; without this it would be undone by
     // the next restart and the user would never be told why.
-    runtime.onNicknameChanged = widget.boot.keyStore.saveNickname;
+    runtime.onNicknameChanged = (name) async {
+      await widget.boot.keyStore.saveNickname(name);
+      // Native holds its own copy of the beacon and keeps broadcasting it with
+      // no Dart alive, so a rename that is not pushed leaves the old name going
+      // out on the air for as long as the app runs. The signature covers the
+      // nickname, so a stale beacon is not merely wrong, it is unverifiable.
+      await _pushPresence();
+    };
     WidgetsBinding.instance.addObserver(this);
     if (state.onboarded) unawaitedStart();
   }
@@ -203,10 +210,23 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   /// which is the whole reason the mesh keeps working in the background — has
   /// nothing to broadcast. Stealth mode is expressed as an empty nickname,
   /// which native treats as "no beacon at all".
-  Future<void> _pushPresence() => transport.setAnnounce(
-    state.status.stealthMode ? '' : state.nickname,
-    widget.boot.keys.identity.publicKey,
-  );
+  ///
+  /// The blob is the whole of the announce past the nickname — identity key,
+  /// Noise key and the signature over both — built by Dart and appended by
+  /// native verbatim. It used to be the identity key alone, which meant the
+  /// beacon that actually runs, on its own timer, in the background, published
+  /// no Noise key at all: mail could only ever be sealed to somebody whose
+  /// Dart-side announce this device happened to catch, so couriering almost
+  /// never worked. Native must be re-told whenever either part changes; see
+  /// every call site of this method.
+  Future<void> _pushPresence() async {
+    if (state.status.stealthMode) {
+      await transport.setAnnounce('', Uint8List(0));
+      return;
+    }
+    final beacon = await runtime.presenceBeacon();
+    await transport.setAnnounce(beacon.nickname, beacon.keyBlob);
+  }
 
   void _report(String message) {
     if (!mounted) return;

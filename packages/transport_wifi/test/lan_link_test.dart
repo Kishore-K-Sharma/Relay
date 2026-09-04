@@ -184,4 +184,70 @@ void main() {
     expect(dialer.dialedByUs, isTrue);
     expect(listener.dialedByUs, isFalse);
   });
+
+  group('the hello boundary', () {
+    /// A raw peer we control byte for byte, so a packet can be composed exactly.
+    Future<(Socket peer, LanLink link)> rawPeer() async {
+      final accepted = server.first;
+      final peer = await Socket.connect(server.address, server.port);
+      return (
+        peer,
+        LanLink(await accepted, localAddressHash: 0x2222, dialedByUs: false),
+      );
+    }
+
+    test('a frame sharing a packet with the hello is delivered', () async {
+      // This was silently dropped. `frames` was a broadcast stream, which
+      // discards events while nobody is listening, and the transport can only
+      // subscribe after awaiting the hello — but everything sharing a socket
+      // read with the hello is delivered synchronously, before the awaiting
+      // code resumes. The first frame of a connection went in the bin, and the
+      // outbox retry made it look like latency rather than loss.
+      final (peer, link) = await rawPeer();
+      addTearDown(() async {
+        await link.close();
+        peer.destroy();
+      });
+
+      peer
+        ..add(LinkCodec.encodeHello(0xAAAAAAAA))
+        ..add(LinkCodec.encodeFrame(Uint8List.fromList([1, 2, 3, 4])));
+      await peer.flush();
+
+      expect(await link.ready, 0xAAAAAAAA);
+
+      // Subscribed only now, exactly as WifiTransport._adopt does.
+      final received = <Uint8List>[];
+      link.frames.listen(received.add);
+      await pumpEventQueue();
+
+      expect(received.single, [1, 2, 3, 4]);
+    });
+
+    test('a frame before any hello hangs up the link', () async {
+      // Buffering frames for a peer that has not said who it is means holding
+      // memory a stranger controls for a peer that may never arrive, and there
+      // would be nowhere to attribute them to in any case.
+      final (peer, link) = await rawPeer();
+      addTearDown(() => peer.destroy());
+
+      peer.add(LinkCodec.encodeFrame(Uint8List.fromList([7, 7])));
+      await peer.flush();
+
+      await link.done.timeout(const Duration(seconds: 5));
+      expect(link.isClosed, isTrue);
+    });
+
+    test('closing a link nobody subscribed to still completes', () async {
+      // A single-subscription controller only finishes closing once a listener
+      // has consumed the done event. A link dropped before the transport ever
+      // subscribed — a hello timeout, or the losing side of a duplicate dial —
+      // must not hang here.
+      final (peer, link) = await rawPeer();
+      addTearDown(() => peer.destroy());
+
+      await link.close().timeout(const Duration(seconds: 5));
+      expect(link.isClosed, isTrue);
+    });
+  });
 }

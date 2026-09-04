@@ -115,24 +115,52 @@ abstract final class LinkCodec {
 ///
 /// One reader per connection. It holds a buffer across reads because a message
 /// routinely arrives in pieces, and two messages routinely arrive in one.
+///
+/// The buffer is a plain byte array with a read cursor rather than a
+/// `BytesBuilder`. A builder has to be flattened to be inspected, and
+/// flattening copies everything accumulated so far — on *every* read, whether
+/// or not a message completed. That made the cost of receiving one message
+/// quadratic in how many pieces it arrived in, which is a number the sender
+/// chooses: dribbling a 64 KiB frame in one-byte writes cost the receiver
+/// about 130 ms of CPU, before the peer had said who it was. Nothing here is
+/// authenticated, so that is an unauthenticated remote amplification.
 class LinkReader {
-  final _buffer = BytesBuilder(copy: true);
+  /// Starting buffer size, doubled as needed.
+  static const int _initialCapacity = 1024;
+
+  /// Above this, an idle reader releases its buffer instead of holding it for
+  /// the life of the link. One large message on each of many links is
+  /// otherwise megabytes of memory nothing is using.
+  static const int _maxIdleCapacity = 64 * 1024;
+
+  Uint8List _buffer = Uint8List(0);
+
+  /// First unconsumed byte.
+  int _start = 0;
+
+  /// One past the last byte received.
+  int _end = 0;
+
+  int get _available => _end - _start;
 
   /// Everything that became complete after adding [chunk].
   ///
   /// Throws [LinkProtocolException] on anything malformed. The caller must
   /// close the connection when that happens; this object is not usable
   /// afterwards because its position in the stream is unknown.
-  Iterable<LinkMessage> offer(Uint8List chunk) sync* {
-    _buffer.add(chunk);
+  ///
+  /// Returns a list rather than a lazy iterable so that the throw above
+  /// happens when this is called, which is what the sentence promises and what
+  /// a caller wrapping the call in a `try` expects.
+  List<LinkMessage> offer(Uint8List chunk) {
+    _append(chunk);
 
-    while (true) {
-      final bytes = _buffer.toBytes();
-      if (bytes.length < LinkCodec._headerLength) return;
-
+    final messages = <LinkMessage>[];
+    while (_available >= LinkCodec._headerLength) {
       final length = ByteData.view(
-        bytes.buffer,
-        bytes.offsetInBytes,
+        _buffer.buffer,
+        _buffer.offsetInBytes + _start,
+        LinkCodec._headerLength,
       ).getUint32(0, Endian.big);
 
       if (length < 1) {
@@ -145,16 +173,50 @@ class LinkReader {
       }
 
       final total = LinkCodec._headerLength + length;
-      if (bytes.length < total) return;
+      if (_available < total) break;
 
-      yield _decodeBody(
-        Uint8List.sublistView(bytes, LinkCodec._headerLength, total),
+      messages.add(
+        _decodeBody(
+          Uint8List.sublistView(
+            _buffer,
+            _start + LinkCodec._headerLength,
+            _start + total,
+          ),
+        ),
       );
-
-      _buffer
-        ..clear()
-        ..add(Uint8List.sublistView(bytes, total));
+      _start += total;
     }
+
+    if (_start == _end) {
+      _start = 0;
+      _end = 0;
+      if (_buffer.length > _maxIdleCapacity) _buffer = Uint8List(0);
+    }
+    return messages;
+  }
+
+  void _append(Uint8List chunk) {
+    if (chunk.isEmpty) return;
+
+    final needed = _available + chunk.length;
+    if (needed > _buffer.length) {
+      var capacity = _buffer.isEmpty ? _initialCapacity : _buffer.length;
+      while (capacity < needed) {
+        capacity *= 2;
+      }
+      _buffer = Uint8List(capacity)..setRange(0, _available, _buffer, _start);
+      _end = _available;
+      _start = 0;
+    } else if (_end + chunk.length > _buffer.length) {
+      // The space exists but is behind the cursor. Slide the live bytes down
+      // rather than reallocating.
+      _buffer.setRange(0, _available, _buffer, _start);
+      _end = _available;
+      _start = 0;
+    }
+
+    _buffer.setRange(_end, _end + chunk.length, chunk);
+    _end += chunk.length;
   }
 
   static LinkMessage _decodeBody(Uint8List body) {

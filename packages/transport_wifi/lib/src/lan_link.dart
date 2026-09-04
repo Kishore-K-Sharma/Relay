@@ -52,7 +52,18 @@ class LanLink {
   final bool dialedByUs;
 
   final _reader = LinkReader();
-  final _frames = StreamController<Uint8List>.broadcast();
+
+  /// Single-subscription, deliberately, not a broadcast controller.
+  ///
+  /// A broadcast controller discards events while nobody is listening, and the
+  /// transport can only subscribe after the hello has been awaited — but
+  /// everything sharing a socket read with the hello is delivered
+  /// synchronously, before the awaiting code resumes. Any frame arriving in
+  /// the same packet as the hello was therefore thrown away. A
+  /// single-subscription controller holds events until the listener attaches,
+  /// which is exactly the required behaviour. Nothing listens twice; see
+  /// [frames].
+  final _frames = StreamController<Uint8List>();
   final _ready = Completer<int>();
   final _done = Completer<void>();
 
@@ -71,6 +82,9 @@ class LanLink {
   Future<int> get ready => _ready.future;
 
   /// Whole mesh frames, in arrival order. Closes when the link does.
+  ///
+  /// Single-subscription: exactly one listener, ever. Events that arrive
+  /// before it attaches are buffered rather than dropped.
   Stream<Uint8List> get frames => _frames.stream;
 
   /// Completes when the link is finished, however it finished.
@@ -118,6 +132,14 @@ class LanLink {
             _ready.complete(addressHash);
           }
         case FrameMessage(:final bytes):
+          // The hello has to come first. Carrying frames for a link that has
+          // not said who it is would mean buffering them for a peer that may
+          // never arrive, which is unauthenticated memory somebody else
+          // controls — and there is nowhere to attribute them to anyway.
+          if (!_ready.isCompleted) {
+            unawaited(close());
+            return;
+          }
           if (!_frames.isClosed) _frames.add(bytes);
       }
     }
@@ -135,7 +157,11 @@ class LanLink {
     }
     _socket.destroy();
 
-    if (!_frames.isClosed) await _frames.close();
+    // Not awaited. `close()` on a single-subscription controller completes only
+    // once a listener has consumed the done event, so a link that was dropped
+    // before the transport ever subscribed — a hello timeout, or the losing
+    // side of a duplicate-dial — would hang here forever.
+    if (!_frames.isClosed) unawaited(_frames.close());
     if (!_done.isCompleted) _done.complete();
   }
 }

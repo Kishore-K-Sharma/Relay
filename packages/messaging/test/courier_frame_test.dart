@@ -127,18 +127,26 @@ void main() {
       expect(Frame.decode(mesh.sent.single.frame).dstHash, carolHash);
     });
 
-    test('it travels exactly one hop', () async {
+    test('it is never rebroadcast by anybody', () async {
       // Flooding an envelope would replicate it outside the spray budget,
       // which is the only thing bounding how much of the mesh one message
       // consumes. It would also be pointless: a mesh that can reach the
       // recipient does not need a courier.
+      //
+      // Zero rather than one, which is what this used to assert. A relay
+      // forwards anything whose counter is not yet exhausted, so at ttl 1
+      // every bystander in range rebroadcasts the envelope once — the exact
+      // replication the comment above says must not happen. Zero still reaches
+      // the carrier, because a frame addressed to a device is delivered before
+      // its hop counter is looked at; see the `isForUs` branch in RelayEngine,
+      // which returns above the ttl check.
       await service.sendCourier(
         await envelope(),
         toPeer: 'carol',
         peerHash: carolHash,
       );
 
-      expect(Frame.decode(mesh.sent.single.frame).ttl, 1);
+      expect(Frame.decode(mesh.sent.single.frame).ttl, 0);
     });
 
     test('the frame does not claim to be encrypted', () async {

@@ -25,6 +25,14 @@ const int suppressionThreshold = 2;
 /// How long witness observations are retained.
 const Duration witnessExpiry = Duration(seconds: 30);
 
+/// Capacity of the witness table.
+///
+/// Bounded for the same reason [dedupMaxEntries] is, and to the same size: a
+/// device that floods distinct message ids would otherwise grow this table at
+/// line rate for a whole [witnessExpiry] window, and the sweep that keeps it
+/// honest walks every entry on every received frame.
+const int witnessMaxEntries = 2000;
+
 /// Produces a delay inside the given window. Injected so tests are deterministic.
 typedef JitterSource = Duration Function(Duration min, Duration max);
 
@@ -256,7 +264,10 @@ class RelayEngine {
     }
 
     if (frame.ttl == 0) {
-      _droppedCount++;
+      // Only a drop when nothing was done with it. A broadcast that arrives
+      // spent is still delivered upward, and counting that as a drop makes the
+      // diagnostics screen report loss that did not happen.
+      if (!deliverLocally) _droppedCount++;
       return RelayDecision(
         deliverLocally: deliverLocally,
         relayFrame: null,
@@ -296,6 +307,14 @@ class RelayEngine {
 
   void _recordWitness(FrameKey id, String peer) {
     (_witnesses[id] ??= <String, Duration>{})[peer] = _clock();
+
+    // Insertion-ordered, so the first key is always the oldest. A repeat
+    // observation of an existing id deliberately does not move it, for the
+    // same reason [DedupSet] does not: otherwise one peer repeating a single
+    // id keeps its own entry alive and evicts everyone else's.
+    while (_witnesses.length > witnessMaxEntries) {
+      _witnesses.remove(_witnesses.keys.first);
+    }
   }
 
   void _sweepWitnesses() {

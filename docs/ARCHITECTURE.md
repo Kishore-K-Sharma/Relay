@@ -209,20 +209,60 @@ Fixed 20 bytes, big-endian, followed by the payload. Sized to leave useful paylo
 
 The only frame this app sends in the clear, and therefore the only one whose
 contents are a decision rather than a convenience. It carries a nickname and two
-public keys — Ed25519 for identity, X25519 for Noise — and no secret.
+public keys — Ed25519 for identity, X25519 for Noise — a signature over all
+three, and no secret.
 
 ```
 [0]              nickname length in bytes
 [1 .. 1+n]       nickname, UTF-8, truncated on a grapheme boundary
 [1+n .. +32]     Ed25519 identity public key
-[1+n+32 .. +32]  X25519 Noise static public key   (optional)
+[1+n+32 .. +32]  X25519 Noise static public key            (optional)
+[1+n+64 .. +64]  Ed25519 signature over everything above   (optional)
 ```
+
+At the longest nickname that is 161 bytes against a 165-byte payload budget. A
+further field does not fit: adding one means fragmenting the announce, and a
+fragmented announce is one a device can half-hear.
 
 Parsed by **length**, never by "the rest of the payload". A build that has
 learned a new field must stay readable by one that has not: a device that cannot
 parse an announce cannot see the person sending it, and there is no second
 channel to fall back to. An announce from before couriers — 32 trailing bytes
 instead of 64 — still parses, with no Noise key.
+
+**The signature is what makes any of it believable.** Every field here is acted
+on: the nickname names a conversation, the identity key decides whether somebody
+is trusted enough to be handed other people's mail (§3.6c), and the X25519 key
+is what a courier envelope is sealed to. Unsigned, all three are assertions by
+whoever is holding a radio — and the X25519 key is the dangerous one, because an
+identity key is *public*. Anyone in range could rebroadcast somebody's identity
+key beside their own X25519 key and have that person's mail sealed to them.
+Pinning the contact does not help: verification covers the identity key, and
+nothing else binds the Noise key to it.
+
+So a receiver sorts an announce three ways, in
+`app/lib/src/domain/announce_trust.dart`:
+
+| Outcome | Meaning | What is believed |
+|---|---|---|
+| `signed` | Verifies against the identity key it claims | Everything |
+| `unsigned` | No signature field | Only that *a* device is in range |
+| `forged` | A signature that does not verify | Nothing; the frame is dropped |
+
+`unsigned` is tolerated rather than dropped because it is not hostile — a build
+that predates the field, or another program on the same radio — but nothing it
+claims is attributable, so nothing it claims is stored.
+
+**One builder, two senders.** Dart broadcasts this frame directly; native
+rebroadcasts the identical bytes on its own timer, because Dart is not alive in
+the background and a beacon that stops when the app closes is not a beacon.
+Native is handed the already-truncated nickname and an opaque blob — the two
+keys and the signature — and appends it verbatim. It deliberately cannot
+construct the payload: the signing key never leaves Dart, and a second
+implementation of this format is exactly how the two sides drift apart. They did
+drift, once: native was handed the identity key alone, so the periodic beacon —
+the only announce a peer met later ever hears — published no Noise key, and
+couriering almost never worked.
 
 The X25519 key is public by construction; every Noise handshake already reveals
 it to whoever this device speaks to. Publishing it in an announce gives away

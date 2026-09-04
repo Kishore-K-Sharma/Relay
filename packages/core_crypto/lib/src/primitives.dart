@@ -209,6 +209,14 @@ class CipherState {
 
   /// Noise REKEY: replace the key with an encryption of 32 zero bytes under the
   /// maximum nonce, leaving the counter untouched.
+  ///
+  /// One deliberate deviation from the spec, which says 2^64-1: Dart integers
+  /// are signed, so the largest nonce this can express is [maxNonce] and the
+  /// rekey uses `maxNonce - 1`. Both sides of a Relay session derive the same
+  /// key, so it is self-consistent — but a Noise implementation from anywhere
+  /// else will not interoperate past the first rekey. That is tolerable only
+  /// because rekeying belongs to the implicit-counter path, which the mesh
+  /// does not use; [NoiseSession.seal] and `open` never call this.
   Future<CipherState> rekey() async {
     final scratch = CipherState(
       Uint8List.fromList(await _key.extractBytes()),

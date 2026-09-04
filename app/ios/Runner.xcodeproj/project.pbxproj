@@ -76,15 +76,15 @@
 		A7BF43DC0A87CB72251458C4 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA907ED812053D6E98DEEAA1 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		FEB0D77A748514758B17B276 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
-		SW4A0001A000000000000000 /* RelayEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = RelayEngine.swift; path = Runner/Ble/RelayEngine.swift; sourceTree = "<group>"; };
-		SW4A0002A000000000000000 /* PacketStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PacketStore.swift; path = Runner/Ble/PacketStore.swift; sourceTree = "<group>"; };
-		SW4A0003A000000000000000 /* MeshManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MeshManager.swift; path = Runner/Ble/MeshManager.swift; sourceTree = "<group>"; };
-		SW4A0004A000000000000000 /* BleApi.g.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = BleApi.g.swift; path = Runner/Ble/BleApi.g.swift; sourceTree = "<group>"; };
-		SW4A0005A000000000000000 /* MeshBlePlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MeshBlePlugin.swift; path = Runner/Ble/MeshBlePlugin.swift; sourceTree = "<group>"; };
-		SW4A0006A000000000000000 /* PowerPolicy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PowerPolicy.swift; path = Runner/Ble/PowerPolicy.swift; sourceTree = "<group>"; };
-		SW4A0007A000000000000000 /* DiscoveryApi.g.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DiscoveryApi.g.swift; path = Runner/Wifi/DiscoveryApi.g.swift; sourceTree = "<group>"; };
-		SW4A0008A000000000000000 /* MeshDiscoveryPlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MeshDiscoveryPlugin.swift; path = Runner/Wifi/MeshDiscoveryPlugin.swift; sourceTree = "<group>"; };
-		SW4A0009A000000000000000 /* LanDiscoverer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = LanDiscoverer.swift; path = Runner/Wifi/LanDiscoverer.swift; sourceTree = "<group>"; };
+		SW4A0001A000000000000000 /* RelayEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = RelayEngine.swift; path = Ble/RelayEngine.swift; sourceTree = "<group>"; };
+		SW4A0002A000000000000000 /* PacketStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PacketStore.swift; path = Ble/PacketStore.swift; sourceTree = "<group>"; };
+		SW4A0003A000000000000000 /* MeshManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MeshManager.swift; path = Ble/MeshManager.swift; sourceTree = "<group>"; };
+		SW4A0004A000000000000000 /* BleApi.g.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = BleApi.g.swift; path = Ble/BleApi.g.swift; sourceTree = "<group>"; };
+		SW4A0005A000000000000000 /* MeshBlePlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MeshBlePlugin.swift; path = Ble/MeshBlePlugin.swift; sourceTree = "<group>"; };
+		SW4A0006A000000000000000 /* PowerPolicy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PowerPolicy.swift; path = Ble/PowerPolicy.swift; sourceTree = "<group>"; };
+		SW4A0007A000000000000000 /* DiscoveryApi.g.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DiscoveryApi.g.swift; path = Wifi/DiscoveryApi.g.swift; sourceTree = "<group>"; };
+		SW4A0008A000000000000000 /* MeshDiscoveryPlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MeshDiscoveryPlugin.swift; path = Wifi/MeshDiscoveryPlugin.swift; sourceTree = "<group>"; };
+		SW4A0009A000000000000000 /* LanDiscoverer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = LanDiscoverer.swift; path = Wifi/LanDiscoverer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

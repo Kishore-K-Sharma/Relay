@@ -16,6 +16,7 @@ object Wire {
     const val JITTER_MAX_MS = 150L
     const val SUPPRESSION_THRESHOLD = 2
     const val WITNESS_EXPIRY_MS = 30_000L
+    const val WITNESS_MAX_ENTRIES = 2000
 }
 
 enum class FrameType(val wire: Int) {
@@ -36,9 +37,10 @@ enum class FrameType(val wire: Int) {
     ROOM_CONTROL(0x0B),
     BATCH(0x0C),
 
-    // Somebody else's mail, handed over in person. Always arrives with ttl 1,
-    // so it is recognised here and then dropped by the ordinary ttl rule
-    // rather than by a special case.
+    // Somebody else's mail, handed over in person. Always arrives with ttl 0
+    // and addressed to the carrier, so the addressee delivers it before the
+    // hop counter is looked at and every bystander drops it by the ordinary
+    // ttl rule, with no special case here.
     COURIER(0x0D);
 
     companion object {
@@ -46,24 +48,40 @@ enum class FrameType(val wire: Int) {
     }
 }
 
+/**
+ * The four defined header flag bits, plus whatever occupies the reserved ones.
+ *
+ * Bits 4-7 are unassigned. They are carried through decode and re-encode
+ * untouched rather than being cleared, because a relay that rewrites a header
+ * it does not understand makes every future flag undeployable: the first build
+ * to set one would find its frames silently stripped by every device still
+ * running this one. A relay forwards what it was given.
+ */
 data class FrameFlags(
     val encrypted: Boolean = false,
     val fragmented: Boolean = false,
     val compressed: Boolean = false,
     val urgent: Boolean = false,
+    /** Bits 4-7 exactly as they arrived. Zero on anything this build originates. */
+    val reserved: Int = 0,
 ) {
     fun toByte(): Int =
         (if (encrypted) 0x01 else 0) or
             (if (fragmented) 0x02 else 0) or
             (if (compressed) 0x04 else 0) or
-            (if (urgent) 0x08 else 0)
+            (if (urgent) 0x08 else 0) or
+            (reserved and RESERVED_MASK)
 
     companion object {
+        /** Bits 4-7: unassigned by this revision. */
+        const val RESERVED_MASK = 0xF0
+
         fun fromByte(b: Int) = FrameFlags(
             encrypted = b and 0x01 != 0,
             fragmented = b and 0x02 != 0,
             compressed = b and 0x04 != 0,
             urgent = b and 0x08 != 0,
+            reserved = b and RESERVED_MASK,
         )
     }
 }
@@ -247,7 +265,13 @@ class RelayEngine(
     },
     private val seen: DedupSet = DedupSet(clock = clock),
 ) {
-    private val witnesses = HashMap<FrameKey, MutableMap<String, Long>>()
+    /**
+     * Insertion-ordered, so the first key is always the oldest. Bounded for the
+     * same reason [DedupSet] is: a device flooding distinct message ids would
+     * otherwise grow this at line rate for a whole witness window, and the
+     * sweep that keeps it honest walks every entry on every received frame.
+     */
+    private val witnesses = LinkedHashMap<FrameKey, MutableMap<String, Long>>()
 
     var relayedCount = 0
         private set
@@ -279,7 +303,10 @@ class RelayEngine(
         }
 
         if (frame.ttl == 0) {
-            droppedCount++
+            // Only a drop when nothing was done with it. A broadcast that
+            // arrives spent is still delivered upward, and counting that as a
+            // drop reports loss that did not happen.
+            if (!deliverLocally) droppedCount++
             return RelayDecision(
                 deliverLocally = deliverLocally,
                 excludePeer = fromPeer,
@@ -315,6 +342,14 @@ class RelayEngine(
 
     private fun recordWitness(key: FrameKey, peer: String) {
         witnesses.getOrPut(key) { HashMap() }[peer] = clock()
+
+        // A repeat observation of an existing id deliberately does not move it
+        // to the back, for the same reason a duplicate does not refresh a dedup
+        // entry: otherwise one peer repeating a single id keeps its own entry
+        // alive and evicts everybody else's.
+        while (witnesses.size > Wire.WITNESS_MAX_ENTRIES) {
+            witnesses.remove(witnesses.keys.first())
+        }
     }
 
     private fun sweepWitnesses() {

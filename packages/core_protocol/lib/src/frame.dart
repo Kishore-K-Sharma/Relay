@@ -89,7 +89,14 @@ enum FrameType {
   }
 }
 
-/// The four defined header flag bits. Bits 4-7 are reserved and must be zero.
+/// The four defined header flag bits, plus whatever occupies the reserved ones.
+///
+/// Bits 4-7 are unassigned. They are carried through decode and re-encode
+/// untouched rather than being cleared, because a relay that rewrites a header
+/// it does not understand makes every future flag undeployable: the first
+/// build to set one would find its frames silently stripped by every device
+/// still running this one. Dropping such a frame outright would be just as
+/// bad, and for the same reason. A relay forwards what it was given.
 @immutable
 class FrameFlags {
   const FrameFlags({
@@ -97,6 +104,7 @@ class FrameFlags {
     this.fragmented = false,
     this.compressed = false,
     this.urgent = false,
+    this.reserved = 0,
   });
 
   factory FrameFlags.fromByte(int byte) => FrameFlags(
@@ -104,6 +112,7 @@ class FrameFlags {
     fragmented: byte & _fragmented != 0,
     compressed: byte & _compressed != 0,
     urgent: byte & _urgent != 0,
+    reserved: byte & _reservedMask,
   );
 
   static const int _encrypted = 1 << 0;
@@ -111,27 +120,37 @@ class FrameFlags {
   static const int _compressed = 1 << 2;
   static const int _urgent = 1 << 3;
 
+  /// Bits 4-7: unassigned by this revision.
+  static const int _reservedMask = 0xF0;
+
   final bool encrypted;
   final bool fragmented;
   final bool compressed;
   final bool urgent;
 
+  /// Bits 4-7 exactly as they arrived, already masked. Zero on anything this
+  /// build originates.
+  final int reserved;
+
   int toByte() =>
       (encrypted ? _encrypted : 0) |
       (fragmented ? _fragmented : 0) |
       (compressed ? _compressed : 0) |
-      (urgent ? _urgent : 0);
+      (urgent ? _urgent : 0) |
+      (reserved & _reservedMask);
 
   FrameFlags copyWith({
     bool? encrypted,
     bool? fragmented,
     bool? compressed,
     bool? urgent,
+    int? reserved,
   }) => FrameFlags(
     encrypted: encrypted ?? this.encrypted,
     fragmented: fragmented ?? this.fragmented,
     compressed: compressed ?? this.compressed,
     urgent: urgent ?? this.urgent,
+    reserved: reserved ?? this.reserved,
   );
 
   @override
@@ -140,10 +159,12 @@ class FrameFlags {
       other.encrypted == encrypted &&
       other.fragmented == fragmented &&
       other.compressed == compressed &&
-      other.urgent == urgent;
+      other.urgent == urgent &&
+      other.reserved == reserved;
 
   @override
-  int get hashCode => Object.hash(encrypted, fragmented, compressed, urgent);
+  int get hashCode =>
+      Object.hash(encrypted, fragmented, compressed, urgent, reserved);
 
   @override
   String toString() {

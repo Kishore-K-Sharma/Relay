@@ -111,4 +111,71 @@ void main() {
       throwsA(isA<LinkProtocolException>()),
     );
   });
+
+  group('the buffer', () {
+    test('a maximum frame delivered one byte at a time stays cheap', () {
+      // A regression guard for a change of complexity class, not for a few
+      // milliseconds. The reader used to flatten its whole accumulated buffer
+      // on every call, including calls where nothing completed, making the
+      // cost of one message quadratic in the number of pieces it arrived in —
+      // a number the *sender* picks. Nothing here is authenticated and this
+      // runs before the peer has said who it is, so that was an
+      // unauthenticated remote amplification.
+      //
+      // The work is repeated to put real distance between the two regimes: the
+      // old reader needed about a second for this, the current one needs a few
+      // tens of milliseconds. The bound sits an order of magnitude above the
+      // latter and well below the former, so a slow machine does not flake and
+      // a reintroduced quadratic does not slip through.
+      final wire = LinkCodec.encodeFrame(Uint8List(LinkCodec.maxFrameLength));
+
+      final watch = Stopwatch()..start();
+      var messages = 0;
+      for (var repeat = 0; repeat < 8; repeat++) {
+        final reader = LinkReader();
+        for (var i = 0; i < wire.length; i++) {
+          messages += reader
+              .offer(Uint8List.sublistView(wire, i, i + 1))
+              .length;
+        }
+      }
+      watch.stop();
+
+      expect(messages, 8);
+      expect(
+        watch.elapsed,
+        lessThan(const Duration(milliseconds: 400)),
+        reason: 'the reader looks quadratic in the number of chunks again',
+      );
+    });
+
+    test('it does not grow without bound across many messages', () {
+      // The cursor has to be reset, and the space behind it reused. Without
+      // that a long-lived link accumulates every byte it has ever received.
+      final reader = LinkReader();
+      final frame = Uint8List(1000);
+
+      for (var i = 0; i < 500; i++) {
+        expect(reader.offer(LinkCodec.encodeFrame(frame)), hasLength(1));
+      }
+    });
+
+    test('a message split across a compaction still reassembles', () {
+      // Half a message left in the buffer, then a chunk that does not fit
+      // behind it, is what forces the live bytes to slide down. Getting that
+      // copy wrong corrupts the frame rather than failing loudly.
+      final wire = LinkCodec.encodeFrame(
+        Uint8List.fromList(List.generate(3000, (i) => i % 256)),
+      );
+      final reader = LinkReader();
+
+      expect(reader.offer(Uint8List.sublistView(wire, 0, 7)), isEmpty);
+      final rest = reader.offer(Uint8List.sublistView(wire, 7));
+
+      expect(
+        (rest.single as FrameMessage).bytes,
+        Uint8List.fromList(List.generate(3000, (i) => i % 256)),
+      );
+    });
+  });
 }
